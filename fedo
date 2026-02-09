@@ -35,6 +35,10 @@
         .scrollbar-thin::-webkit-scrollbar { width: 6px; }
         .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
         .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+        .progress-fill {
+            background: linear-gradient(90deg, #10b981, #34d399, #6ee7b7);
+            transition: width 0.5s ease;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen text-white p-4 md:p-8">
@@ -66,13 +70,18 @@
                             <i class="fas fa-gauge-high text-amber-400 text-2xl"></i>
                             Live Dashboard
                         </h2>
-                        <button hx-get="/api/status" hx-target="#status-metrics" 
-                                class="p-3 glass rounded-2xl hover:bg-white/20 transition-all flex items-center gap-2 text-sm font-bold">
+                        <button id="refresh-status" 
+                                class="p-3 glass rounded-2xl hover:bg-white/20 transition-all flex items-center gap-2 text-sm font-bold"
+                                hx-get="/api/status" hx-target="#status-metrics" hx-swap="innerHTML">
                             <i class="fas fa-sync-alt"></i> Refresh
                         </button>
                     </div>
-                    <div id="status-metrics" hx-get="/api/status" hx-trigger="load, every 3s" hx-swap="innerHTML" class="space-y-8">
-                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+                    <div id="status-metrics" 
+                         hx-get="/api/status" 
+                         hx-trigger="load, every 3s" 
+                         class="space-y-8">
+                        <!-- Loading state -->
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
                             <div class="text-center p-8 glass rounded-2xl h-32 flex items-center justify-center">
                                 <div class="w-16 h-16 bg-white/10 rounded-xl animate-pulse"></div>
                             </div>
@@ -100,7 +109,7 @@
                                 Live Accounts (<span id="success-count">0</span>)
                             </h3>
                             <div class="flex gap-3">
-                                <a href="/api/export-success/csv" 
+                                <a href="/api/export-success/csv?min_shipments=1" 
                                    class="p-3 bg-green-500/20 hover:bg-green-500/40 text-green-300 rounded-2xl transition-all flex items-center gap-2 font-bold"
                                    download="fedex_live_accounts.csv">
                                     <i class="fas fa-download"></i> CSV
@@ -110,8 +119,7 @@
                         <div id="success-results" 
                              class="max-h-96 overflow-y-auto scrollbar-thin space-y-3 pr-4"
                              hx-get="/api/success?limit=8" 
-                             hx-trigger="load, every 5s" 
-                             hx-swap="innerHTML">
+                             hx-trigger="load, every 5s">
                             <div class="text-center py-20 opacity-50">
                                 <i class="fas fa-circle-check text-6xl block mb-4"></i>
                                 <div class="text-lg">Loading live accounts...</div>
@@ -130,8 +138,7 @@
                         <div id="invalid-results" 
                              class="max-h-96 overflow-y-auto scrollbar-thin space-y-3 pr-4"
                              hx-get="/api/invalid?limit=8" 
-                             hx-trigger="load, every 5s" 
-                             hx-swap="innerHTML">
+                             hx-trigger="load, every 5s">
                             <div class="text-center py-20 opacity-50">
                                 <i class="fas fa-times-circle text-6xl block mb-4"></i>
                                 <div class="text-lg">Loading invalid accounts...</div>
@@ -176,7 +183,7 @@
                     </div>
                 </div>
 
-                <!-- 🎚️ WORKER SLIDER + Quick Actions -->
+                <!-- 🎚️ WORKER CONTROL -->
                 <div class="glass rounded-3xl p-8 shadow-2xl" id="control-panel">
                     <h3 class="text-xl font-bold mb-8 flex items-center gap-3">
                         <i class="fas fa-bolt text-yellow-400 text-xl"></i>
@@ -214,11 +221,11 @@
                     </div>
 
                     <div class="space-y-4">
-                        <button class="launch-btn w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-5 px-6 rounded-2xl shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 text-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
+                        <button class="launch-btn w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-5 px-6 rounded-2xl shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 text-lg"
                                 hx-post="/api/check"
                                 hx-vals='js:{
-                                    filename: document.querySelector("input[type=file]")?.files[0]?.name || "fedex_accounts.txt", 
-                                    num_browsers: document.getElementById("worker-slider").value, 
+                                    filename: document.querySelector("#upload-form input[type=file]")?.files[0]?.name || prompt("Enter filename:", "credentials.txt"), 
+                                    num_browsers: parseInt(document.getElementById("worker-slider").value), 
                                     start_line: 0
                                 }'
                                 hx-target="#control-panel"
@@ -227,11 +234,10 @@
                             <span>🚀 Launch <span id="launch-worker-count">15</span> Workers</span>
                         </button>
                         
-                        <button class="stop-btn w-full bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold py-5 px-6 rounded-2xl shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 text-lg opacity-40"
+                        <button class="stop-btn w-full bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold py-5 px-6 rounded-2xl shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 text-lg opacity-50 cursor-not-allowed"
                                 hx-get="/api/stop"
                                 hx-target="#control-panel"
-                                hx-swap="outerHTML"
-                                disabled>
+                                hx-swap="outerHTML">
                             <i class="fas fa-stop-circle text-xl"></i>
                             <span>🛑 Stop All Workers</span>
                         </button>
@@ -246,141 +252,143 @@
         
         // 🔥 Worker Slider Logic
         const slider = document.getElementById('worker-slider');
-        const workerCount = document.getElementById('worker-count');
-        const launchWorkerCount = document.getElementById('launch-worker-count');
-        const speedPreview = document.getElementById('speed-preview');
-        const timeEstimate = document.getElementById('time-estimate');
+        const workerCountEl = document.getElementById('worker-count');
+        const launchWorkerCountEl = document.getElementById('launch-worker-count');
+        const speedPreviewEl = document.getElementById('speed-preview');
+        const timeEstimateEl = document.getElementById('time-estimate');
 
         slider.addEventListener('input', function() {
             const value = parseInt(this.value);
-            workerCount.textContent = value;
-            launchWorkerCount.textContent = value;
+            workerCountEl.textContent = value;
+            launchWorkerCountEl.textContent = value;
             
-            let speedText = '';
-            let timeText = '';
+            const speedTexts = ['🐌 Slow & Safe', '⚡ Medium Speed', '🚀 Fast', '⚡💥 Ultra Fast'];
+            const timeTexts = ['~5-10 min', '~2-4 min', '~1-2 min', '~30s-1 min'];
+            const index = Math.min(Math.floor(value / 13), 3);
             
-            if (value <= 5) {
-                speedText = '🐌 Slow & Safe';
-                timeText = '~5-10 min';
-            } else if (value <= 15) {
-                speedText = '⚡ Medium Speed';
-                timeText = '~2-4 min';
-            } else if (value <= 30) {
-                speedText = '🚀 Fast';
-                timeText = '~1-2 min';
-            } else {
-                speedText = '⚡💥 Ultra Fast';
-                timeText = '~30s-1 min';
-            }
-            
-            speedPreview.textContent = speedText;
-            timeEstimate.textContent = timeText;
+            speedPreviewEl.textContent = speedTexts[index];
+            timeEstimateEl.textContent = timeTexts[index];
         });
 
-        // Transform JSON responses to HTML
-        document.body.addEventListener('htmx:beforeSwap', function(e) {
-            const targetId = e.target.id;
-            let content = e.detail.xhr.responseText;
+        // ✅ CORE FIX: Handle JSON responses AFTER HTMX swaps
+        document.body.addEventListener('htmx:afterRequest', function(e) {
+            if (!e.detail.successful || !e.detail.xhr.responseText) return;
+            
+            const target = e.detail.target;
+            let data;
             
             try {
-                const data = JSON.parse(content);
-                
-                if (targetId === 'status-metrics') {
-                    content = renderStatusMetrics(data);
-                }
-                else if (targetId === 'success-results') {
-                    content = renderSuccessTable(data.success || []);
-                    document.getElementById('success-count').textContent = data.total || 0;
-                }
-                else if (targetId === 'invalid-results') {
-                    content = renderInvalidTable(data.invalid || []);
-                    document.getElementById('invalid-count').textContent = data.total || 0;
-                }
-                else if (e.target.id === 'upload-result' && data.status) {
-                    content = renderUploadResult(data);
-                }
-                
-                e.detail.xhr.responseText = content;
-                e.detail.target.innerHTML = content;
+                data = JSON.parse(e.detail.xhr.responseText);
             } catch(err) {
-                console.log('JSON parse failed, using raw response');
+                console.log('Non-JSON response, skipping:', e.detail.xhr.responseText);
+                return;
             }
-        });
-
-        function renderStatusMetrics(data) {
-            const running = data.is_running ? '🟢 Running' : '⚫ Idle';
-            const progress = data.progress_pct ? `${data.progress_pct}%` : '0%';
-            const successRate = data.success_rate || '0%';
+            
+            // Transform specific targets
+            if (target.id === 'status-metrics') {
+                target.innerHTML = renderStatusMetrics(data);
+            } else if (target.id === 'success-results') {
+                target.innerHTML = renderSuccessTable(data.success || []);
+                document.getElementById('success-count').textContent = data.total || 0;
+            } else if (target.id === 'invalid-results') {
+                target.innerHTML = renderInvalidTable(data.invalid || []);
+                document.getElementById('invalid-count').textContent = data.total || 0;
+            } else if (target.id === 'upload-result') {
+                target.innerHTML = renderUploadResult(data);
+            }
             
             updateControls(data);
+        });
+
+        // 🎨 Render Functions
+        function renderStatusMetrics(data) {
+            const progress = data.progress_pct ? `${data.progress_pct.toFixed(1)}%` : '0%';
+            const progressWidth = Math.min((data.progress_pct || 0), 100);
             
             return `
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="text-center p-8 glass rounded-2xl">
-                        <div class="text-4xl font-black text-green-400 mb-2">${data.success || 0}</div>
-                        <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Live Accounts</div>
+                <div class="space-y-6">
+                    <!-- Progress Bar -->
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="flex justify-between text-sm mb-4 opacity-90">
+                            <span>${data.checked || 0} / ${data.total_logins || 0}</span>
+                            <span>${progress}</span>
+                        </div>
+                        <div class="w-full bg-white/10 rounded-full h-4 relative overflow-hidden">
+                            <div class="progress-fill absolute inset-0 h-4 rounded-full" style="width: ${progressWidth}%"></div>
+                        </div>
                     </div>
-                    <div class="text-center p-8 glass rounded-2xl">
-                        <div class="text-4xl font-black text-red-400 mb-2">${data.invalid || 0}</div>
-                        <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Invalid</div>
+                    
+                    <!-- Metrics Grid -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="text-center p-8 glass rounded-2xl">
+                            <div class="text-4xl font-black text-green-400 mb-2">${data.success || 0}</div>
+                            <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Live Accounts</div>
+                        </div>
+                        <div class="text-center p-8 glass rounded-2xl">
+                            <div class="text-4xl font-black text-red-400 mb-2">${data.invalid || 0}</div>
+                            <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Invalid</div>
+                        </div>
+                        <div class="text-center p-8 glass rounded-2xl">
+                            <div class="text-4xl font-black text-orange-400 mb-2">${data.total_shipments || 0}</div>
+                            <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Total Shipments</div>
+                        </div>
+                        <div class="text-center p-8 glass rounded-2xl">
+                            <div class="text-4xl font-black text-blue-400 mb-2">${data.threads || data.num_browsers || 0}</div>
+                            <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Workers</div>
+                        </div>
                     </div>
-                    <div class="text-center p-8 glass rounded-2xl">
-                        <div class="text-4xl font-black text-blue-400 mb-2">${progress}</div>
-                        <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Progress</div>
-                    </div>
-                    <div class="text-center p-8 glass rounded-2xl">
-                        <div class="text-4xl font-black text-orange-400 mb-2">${data.total_shipments || 0}</div>
-                        <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Total Shipments</div>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/10">
-                    <div class="p-6 glass rounded-2xl text-center">
-                        <div class="text-lg font-bold">${data.current_file || 'No file'}</div>
-                        <div class="text-sm opacity-75">${data.total_logins || 0} total creds</div>
-                    </div>
-                    <div class="p-6 glass rounded-2xl text-center">
-                        <div class="text-lg font-bold">${data.elapsed || '00:00'}</div>
-                        <div class="text-sm opacity-75">${running}</div>
-                    </div>
-                    <div class="p-6 glass rounded-2xl text-center">
-                        <div class="text-lg font-bold text-green-400">${successRate}</div>
-                        <div class="text-sm opacity-75">Success Rate</div>
+                    
+                    <!-- Status Details -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/10">
+                        <div class="p-6 glass rounded-2xl text-center">
+                            <div class="text-lg font-bold">${data.current_file || 'No file'}</div>
+                            <div class="text-sm opacity-75">${data.total_logins || 0} total creds</div>
+                        </div>
+                        <div class="p-6 glass rounded-2xl text-center">
+                            <div class="text-lg font-bold">${data.elapsed || '00:00'}</div>
+                            <div class="text-sm opacity-75">${data.is_running ? '🟢 Running' : '⚫ Idle'}</div>
+                        </div>
+                        <div class="p-6 glass rounded-2xl text-center">
+                            <div class="text-lg font-bold text-green-400">${data.success_rate || '0%'}</div>
+                            <div class="text-sm opacity-75">Success Rate</div>
+                        </div>
                     </div>
                 </div>
             `;
         }
 
         function renderSuccessTable(accounts) {
-            if (!accounts.length) {
+            if (!accounts || !accounts.length) {
                 return `
                     <div class="text-center py-20 opacity-50">
                         <i class="fas fa-circle-check text-6xl block mb-4"></i>
                         <div class="text-lg">No live accounts yet</div>
-                        <div class="text-sm mt-2">Upload credentials to start checking</div>
+                        <div class="text-sm mt-2">Upload credentials and launch workers</div>
                     </div>
                 `;
             }
             
             return accounts.map(account => `
-                <div class="success-row p-4 rounded-2xl hover:bg-white/10 transition-all group">
+                <div class="success-row p-4 rounded-2xl hover:bg-white/10 transition-all group border border-white/10">
                     <div class="flex flex-col space-y-1 flex-1 min-w-0">
-                        <div class="font-bold text-sm truncate">${account.user_id}</div>
-                        <div class="text-xs opacity-75 truncate">${account.password}</div>
-                        ${account.name ? `<div class="text-xs opacity-60">${account.name}</div>` : ''}
+                        <div class="font-bold text-sm truncate group-hover:underline">${account.user_id}</div>
+                        <div class="text-xs opacity-75 truncate">${account.password?.slice(0,20)}${account.password?.length > 20 ? '...' : ''}</div>
+                        ${account.name ? `<div class="text-xs opacity-60 capitalize">${account.name}</div>` : ''}
+                        ${account.phone ? `<div class="text-xs opacity-50">${account.phone}</div>` : ''}
                     </div>
-                    <div class="text-right">
-                        <div class="font-bold text-lg text-green-400">${account.total_shipments || 0}</div>
-                        <div class="text-xs opacity-75 flex items-center justify-end gap-1">
+                    <div class="text-right ml-4">
+                        <div class="font-bold text-xl text-green-400">${account.total_shipments || 0}</div>
+                        <div class="text-xs opacity-75 flex items-center justify-end gap-1 mt-1">
                             <i class="fas fa-truck"></i> shipments
                         </div>
-                        ${account.has_shipments ? '<div class="text-xs bg-green-500/30 text-green-300 px-2 py-1 rounded-full mt-1 font-bold">ACTIVE</div>' : ''}
+                        ${account.has_shipments ? '<div class="text-xs bg-green-500/30 text-green-300 px-2 py-1 rounded-full mt-2 font-bold animate-pulse">🔥 LIVE</div>' : ''}
                     </div>
                 </div>
             `).join('');
         }
 
         function renderInvalidTable(accounts) {
-            if (!accounts.length) {
+            if (!accounts || !accounts.length) {
                 return `
                     <div class="text-center py-20 opacity-50">
                         <i class="fas fa-times-circle text-6xl block mb-4"></i>
@@ -390,13 +398,13 @@
             }
             
             return accounts.slice(0, 8).map(account => `
-                <div class="invalid-row p-4 rounded-xl hover:bg-white/10 transition-all">
+                <div class="invalid-row p-4 rounded-xl hover:bg-white/10 transition-all border border-white/10">
                     <div class="flex flex-col space-y-1 flex-1 min-w-0">
                         <div class="font-bold text-sm truncate">${account.user_id}</div>
                         <div class="text-xs opacity-75 truncate">${account.password || '****'}</div>
                     </div>
-                    <div class="text-right text-xs opacity-75">
-                        ${account.error ? account.error.slice(0, 30) + '...' : account.login_status}
+                    <div class="text-right text-xs opacity-75 font-mono bg-red-500/20 px-2 py-1 rounded text-red-300">
+                        ${account.error ? account.error.slice(0, 40) + '...' : account.login_status || 'Failed'}
                     </div>
                 </div>
             `).join('');
@@ -405,21 +413,24 @@
         function renderUploadResult(data) {
             if (data.status === 'success') {
                 return `
-                    <div class="flex items-center gap-3 p-6 bg-emerald-500/20 rounded-2xl border-2 border-emerald-400/40">
+                    <div class="flex items-center gap-3 p-6 bg-emerald-500/20 rounded-2xl border-2 border-emerald-400/40 animate-pulse">
                         <i class="fas fa-check-circle text-2xl text-emerald-400"></i>
                         <div>
                             <div class="font-bold text-lg">${data.filename}</div>
                             <div class="text-sm opacity-90">${data.total_creds || 0} valid credentials</div>
+                            <div class="text-xs opacity-75 mt-1">Ready to launch workers!</div>
                         </div>
                     </div>
                 `;
+            } else if (data.status === 'error') {
+                return `
+                    <div class="flex items-center gap-3 p-6 bg-red-500/20 rounded-2xl border-2 border-red-400/40">
+                        <i class="fas fa-exclamation-triangle text-2xl text-red-400"></i>
+                        <div class="font-bold">${data.message || 'Upload failed'}</div>
+                    </div>
+                `;
             }
-            return `
-                <div class="flex items-center gap-3 p-6 bg-red-500/20 rounded-2xl border-2 border-red-400/40">
-                    <i class="fas fa-exclamation-triangle text-2xl text-red-400"></i>
-                    <div>${data.message || 'Upload failed'}</div>
-                </div>
-            `;
+            return `<div class="text-red-400 text-sm">Unknown response</div>`;
         }
 
         function updateControls(status) {
@@ -429,27 +440,34 @@
             if (status?.is_running) {
                 if (launchBtn) {
                     launchBtn.disabled = true;
-                    launchBtn.style.opacity = '0.4';
+                    launchBtn.classList.add('opacity-40', 'cursor-not-allowed');
+                    launchBtn.classList.remove('hover:from-emerald-600', 'hover:to-teal-700');
                 }
                 if (stopBtn) {
                     stopBtn.disabled = false;
-                    stopBtn.style.opacity = '1';
+                    stopBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
             } else {
                 if (launchBtn) {
                     launchBtn.disabled = false;
-                    launchBtn.style.opacity = '1';
+                    launchBtn.classList.remove('opacity-40', 'cursor-not-allowed');
                 }
                 if (stopBtn) {
                     stopBtn.disabled = true;
-                    stopBtn.style.opacity = '0.4';
+                    stopBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 }
             }
         }
 
-        // Success sound effect
+        // 🎵 Success sound + notifications
         document.body.addEventListener('htmx:afterSwap', function(e) {
-            if (e.target.id === 'success-results') {
+            if (e.target.id === 'success-results' && document.querySelector('.success-row')) {
+                playSuccessSound();
+            }
+        });
+
+        function playSuccessSound() {
+            try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const oscillator = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
@@ -460,35 +478,53 @@
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
                 oscillator.start(audioCtx.currentTime);
                 oscillator.stop(audioCtx.currentTime + 0.3);
-            }
-        });
+            } catch(e) {}
+        }
 
-        // Toast notifications
-        document.body.addEventListener('htmx:afterRequest', function(e) {
-            if (e.detail.successful) {
-                if (e.target.matches('#upload-form button')) {
-                    showToast('✅ File uploaded successfully!', 'success');
-                }
-                if (e.target.classList.contains('launch-btn')) {
-                    showToast('🚀 Workers launched! Monitoring live...', 'success');
-                }
-            }
-        });
-
-        function showToast(message, type) {
+        function showToast(message, type = 'info') {
             const toast = document.createElement('div');
-            toast.className = `fixed top-6 right-6 z-50 p-6 rounded-3xl shadow-3xl transform translate-x-full transition-all duration-300 text-white font-bold flex items-center gap-3 max-w-sm backdrop-blur-xl ${
-                type === 'success' ? 'bg-emerald-500/95 border border-emerald-400/50' : 'bg-blue-500/95 border border-blue-400/50'
+            toast.className = `fixed top-6 right-6 z-[9999] p-6 rounded-3xl shadow-3xl transform translate-x-full transition-all duration-300 text-white font-bold flex items-center gap-3 max-w-sm backdrop-blur-xl ${
+                type === 'success' ? 'bg-emerald-500/95 border border-emerald-400/50' : 
+                type === 'error' ? 'bg-red-500/95 border border-red-400/50' : 
+                'bg-blue-500/95 border border-blue-400/50'
             }`;
-            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'} text-xl"></i>${message}`;
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'} text-xl"></i>${message}`;
             document.body.appendChild(toast);
             
             requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
             setTimeout(() => {
                 toast.classList.add('translate-x-full');
                 setTimeout(() => toast.remove(), 300);
-            }, 3500);
+            }, 4000);
         }
+
+        // Auto-refresh controls after actions
+        document.body.addEventListener('htmx:afterRequest', function(e) {
+            if (e.target.closest('#control-panel') && e.detail.successful) {
+                setTimeout(() => {
+                    document.getElementById('refresh-status').click();
+                }, 1000);
+            }
+            
+            if (e.target.matches('#upload-form button')) {
+                if (e.detail.successful) {
+                    showToast('✅ File uploaded successfully!', 'success');
+                } else {
+                    showToast('❌ Upload failed', 'error');
+                }
+            }
+            
+            if (e.target.classList.contains('launch-btn') && e.detail.successful) {
+                showToast('🚀 Workers launched! Live monitoring active...', 'success');
+            }
+        });
+
+        // Page load initialization
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                document.getElementById('refresh-status').click();
+            }, 500);
+        });
     </script>
 </body>
 </html>
