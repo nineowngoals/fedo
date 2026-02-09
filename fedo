@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FedEx Live Checker v4.0</title>
+    <title>FedEx Live Checker v4.8</title>
     <script src="https://unpkg.com/htmx.org@2.0.0"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -51,8 +51,8 @@
                     <i class="fas fa-truck-loading text-5xl text-amber-400"></i>
                 </div>
                 <div>
-                    <h1 class="text-5xl md:text-6xl font-black gradient-text mb-3 drop-shadow-2xl">FedEx Live Checker</h1>
-                    <p class="text-xl md:text-2xl opacity-90 font-medium">Real-time shipment account validation dashboard</p>
+                    <h1 class="text-5xl md:text-6xl font-black gradient-text mb-3 drop-shadow-2xl">FedEx Live Checker v4.8</h1>
+                    <p class="text-xl md:text-2xl opacity-90 font-medium">Production ready • Max 3 workers • Silent logging</p>
                 </div>
             </div>
         </div>
@@ -72,7 +72,9 @@
                         </h2>
                         <button id="refresh-status" 
                                 class="p-3 glass rounded-2xl hover:bg-white/20 transition-all flex items-center gap-2 text-sm font-bold"
-                                hx-get="/api/status" hx-target="#status-metrics" hx-swap="innerHTML">
+                                hx-get="/api/status" 
+                                hx-target="#status-metrics" 
+                                hx-swap="innerHTML">
                             <i class="fas fa-sync-alt"></i> Refresh
                         </button>
                     </div>
@@ -109,10 +111,15 @@
                                 Live Accounts (<span id="success-count">0</span>)
                             </h3>
                             <div class="flex gap-3">
-                                <a href="/api/export-success/csv?min_shipments=1" 
+                                <a id="export-success" href="/api/export-success/csv?min_shipments=1" 
                                    class="p-3 bg-green-500/20 hover:bg-green-500/40 text-green-300 rounded-2xl transition-all flex items-center gap-2 font-bold"
                                    download="fedex_live_accounts.csv">
                                     <i class="fas fa-download"></i> CSV
+                                </a>
+                                <a href="/api/export-success/json?limit=100&min_shipments=1" 
+                                   class="p-3 bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 rounded-2xl transition-all flex items-center gap-2 font-bold"
+                                   download="fedex_live_accounts.json">
+                                    <i class="fas fa-file-code"></i> JSON
                                 </a>
                             </div>
                         </div>
@@ -174,12 +181,12 @@
                         <button type="submit" 
                                 class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-4 px-8 rounded-2xl shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 text-lg">
                             <i class="fas fa-rocket-launch"></i>
-                            <span>Upload & Validate</span>
+                            <span>Upload & Parse</span>
                         </button>
                     </form>
                     <div id="upload-result" class="mt-8 p-6 rounded-2xl glass border-2 border-dashed border-white/20 text-center min-h-[100px] flex flex-col items-center justify-center">
                         <i class="fas fa-file-upload text-4xl text-blue-400 mb-4 opacity-60"></i>
-                        <div class="opacity-60">Upload .txt file with format:<br><code>email:password|[name=John][phone=555-1234]</code></div>
+                        <div class="opacity-60">Upload .txt file with format:<br><code>email:password<br>OR<br>email:password|[name=John][phone=555-1234]</code></div>
                     </div>
                 </div>
 
@@ -187,60 +194,91 @@
                 <div class="glass rounded-3xl p-8 shadow-2xl" id="control-panel">
                     <h3 class="text-xl font-bold mb-8 flex items-center gap-3">
                         <i class="fas fa-bolt text-yellow-400 text-xl"></i>
-                        Worker Control
+                        Worker Control <span id="status-indicator" class="ml-2 px-3 py-1 rounded-full text-xs font-bold bg-gray-700">IDLE</span>
                     </h3>
                     
                     <!-- 🔥 WORKER SLIDER -->
                     <div class="mb-8 p-6 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-2xl border border-blue-400/30">
                         <div class="flex items-center justify-between mb-4">
                             <span class="font-bold text-lg">Workers:</span>
-                            <span id="worker-count" class="text-3xl font-black text-blue-400">15</span>
+                            <span id="worker-count" class="text-3xl font-black text-blue-400">3</span>
                         </div>
                         
                         <input type="range" 
                                id="worker-slider" 
-                               min="1" max="50" value="15" step="1"
+                               min="1" max="3" value="1" step="1"
                                class="w-full h-3 bg-gradient-to-r from-gray-700 to-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 transition-all">
                         
                         <div class="flex justify-between text-xs opacity-75 mt-2">
                             <span>1 worker</span>
-                            <span class="font-bold">25 workers</span>
-                            <span>50 max</span>
+                            <span class="font-bold">2 workers</span>
+                            <span>3 max</span>
                         </div>
                         
                         <div class="mt-4 p-3 bg-white/5 rounded-xl text-sm opacity-80">
                             <div class="flex items-center gap-2 mb-1">
                                 <i class="fas fa-bolt text-yellow-400"></i>
-                                <span id="speed-preview">Medium speed (15 workers)</span>
+                                <span id="speed-preview">Safe speed (1-3 workers)</span>
                             </div>
                             <div class="flex items-center gap-2 text-xs">
                                 <i class="fas fa-clock text-gray-400"></i>
-                                <span>Est. time: <span id="time-estimate">~2-4 min</span></span>
+                                <span>Est. time: <span id="time-estimate">~1-3 min</span></span>
                             </div>
                         </div>
                     </div>
 
+                    <!-- 🔥 LAUNCH BUTTON - FIXED -->
                     <div class="space-y-4">
                         <button class="launch-btn w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-5 px-6 rounded-2xl shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 text-lg"
                                 hx-post="/api/check"
+                                hx-ext="json-enc"
                                 hx-vals='js:{
-                                    filename: document.querySelector("#upload-form input[type=file]")?.files[0]?.name || prompt("Enter filename:", "credentials.txt"), 
-                                    num_browsers: parseInt(document.getElementById("worker-slider").value), 
+                                    filename: document.querySelector("#upload-form input[type=file]")?.files[0]?.name || "credentials.txt",
+                                    num_browsers: parseInt(document.getElementById("worker-slider").value),
                                     start_line: 0
                                 }'
-                                hx-target="#control-panel"
-                                hx-swap="outerHTML">
+                                hx-target="#control-result"
+                                hx-swap="beforeend">
                             <i class="fas fa-rocket text-xl"></i>
-                            <span>🚀 Launch <span id="launch-worker-count">15</span> Workers</span>
+                            <span>🚀 Launch <span id="launch-worker-count">1</span> Worker<span id="worker-plural">s</span></span>
                         </button>
                         
-                        <button class="stop-btn w-full bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold py-5 px-6 rounded-2xl shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 text-lg opacity-50 cursor-not-allowed"
+                        <button class="stop-btn w-full bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold py-5 px-6 rounded-2xl shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 text-lg"
                                 hx-get="/api/stop"
                                 hx-target="#control-panel"
                                 hx-swap="outerHTML">
                             <i class="fas fa-stop-circle text-xl"></i>
                             <span>🛑 Stop All Workers</span>
                         </button>
+                    </div>
+
+                    <div id="control-result" class="mt-6 p-4 rounded-2xl glass border border-white/20 min-h-[60px] flex items-center justify-center"></div>
+                </div>
+
+                <!-- 📝 Quick Text Input -->
+                <div class="glass rounded-3xl p-8 shadow-2xl">
+                    <h3 class="text-xl font-bold mb-6 flex items-center gap-3">
+                        <i class="fas fa-keyboard text-purple-400 text-xl"></i>
+                        Quick Paste Credentials
+                    </h3>
+                    <form hx-post="/api/save-text" 
+                          hx-vals='js:{filename: "pasted-creds.txt"}'
+                          hx-target="#text-result" 
+                          hx-swap="innerHTML"
+                          class="space-y-4">
+                        <textarea name="content" 
+                                  rows="4"
+                                  placeholder="email:password&#10;test2@example.com:pass123&#10;..."
+                                  class="w-full p-4 rounded-2xl glass border border-white/30 focus:border-blue-400/60 focus:ring-4 focus:ring-blue-400/30 text-white placeholder-white/50 resize-vertical"></textarea>
+                        <button type="submit" 
+                                class="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold py-3 px-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2">
+                            <i class="fas fa-save"></i>
+                            Save as pasted-creds.txt
+                        </button>
+                    </form>
+                    <div id="text-result" class="mt-4 p-4 rounded-xl glass text-center opacity-60">
+                        <i class="fas fa-paste text-2xl mb-2"></i>
+                        <div>Paste credentials above</div>
                     </div>
                 </div>
             </div>
@@ -250,10 +288,11 @@
     <script>
         htmx.config.globalLoadingIndicator = '';
         
-        // 🔥 Worker Slider Logic
+        // 🔥 FIXED Worker Slider Logic
         const slider = document.getElementById('worker-slider');
         const workerCountEl = document.getElementById('worker-count');
         const launchWorkerCountEl = document.getElementById('launch-worker-count');
+        const workerPluralEl = document.getElementById('worker-plural');
         const speedPreviewEl = document.getElementById('speed-preview');
         const timeEstimateEl = document.getElementById('time-estimate');
 
@@ -261,30 +300,30 @@
             const value = parseInt(this.value);
             workerCountEl.textContent = value;
             launchWorkerCountEl.textContent = value;
+            workerPluralEl.textContent = value === 1 ? '' : 's';
             
-            const speedTexts = ['🐌 Slow & Safe', '⚡ Medium Speed', '🚀 Fast', '⚡💥 Ultra Fast'];
-            const timeTexts = ['~5-10 min', '~2-4 min', '~1-2 min', '~30s-1 min'];
-            const index = Math.min(Math.floor(value / 13), 3);
+            const speeds = ['🐌 1 worker (Safe)', '⚡ 2 workers', '🚀 3 workers (Max)'];
+            const times = ['~3-5 min', '~2-3 min', '~1-2 min'];
             
-            speedPreviewEl.textContent = speedTexts[index];
-            timeEstimateEl.textContent = timeTexts[index];
+            speedPreviewEl.textContent = speeds[value-1];
+            timeEstimateEl.textContent = times[value-1];
         });
 
-        // ✅ CORE FIX: Handle JSON responses AFTER HTMX swaps
+        // ✅ FIXED: Handle ALL JSON responses
         document.body.addEventListener('htmx:afterRequest', function(e) {
             if (!e.detail.successful || !e.detail.xhr.responseText) return;
             
-            const target = e.detail.target;
             let data;
-            
             try {
                 data = JSON.parse(e.detail.xhr.responseText);
             } catch(err) {
-                console.log('Non-JSON response, skipping:', e.detail.xhr.responseText);
+                console.log('Non-JSON:', e.detail.xhr.responseText);
                 return;
             }
             
-            // Transform specific targets
+            // Transform responses
+            const target = e.detail.target;
+            
             if (target.id === 'status-metrics') {
                 target.innerHTML = renderStatusMetrics(data);
             } else if (target.id === 'success-results') {
@@ -295,19 +334,21 @@
                 document.getElementById('invalid-count').textContent = data.total || 0;
             } else if (target.id === 'upload-result') {
                 target.innerHTML = renderUploadResult(data);
+            } else if (target.id === 'control-result') {
+                target.innerHTML = renderControlResult(data);
             }
             
             updateControls(data);
+            updateStatusIndicator(data);
         });
 
-        // 🎨 Render Functions
+        // 🎨 Render Functions - FIXED
         function renderStatusMetrics(data) {
             const progress = data.progress_pct ? `${data.progress_pct.toFixed(1)}%` : '0%';
             const progressWidth = Math.min((data.progress_pct || 0), 100);
             
             return `
                 <div class="space-y-6">
-                    <!-- Progress Bar -->
                     <div class="glass p-6 rounded-2xl">
                         <div class="flex justify-between text-sm mb-4 opacity-90">
                             <span>${data.checked || 0} / ${data.total_logins || 0}</span>
@@ -318,11 +359,10 @@
                         </div>
                     </div>
                     
-                    <!-- Metrics Grid -->
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
                         <div class="text-center p-8 glass rounded-2xl">
                             <div class="text-4xl font-black text-green-400 mb-2">${data.success || 0}</div>
-                            <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Live Accounts</div>
+                            <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Live</div>
                         </div>
                         <div class="text-center p-8 glass rounded-2xl">
                             <div class="text-4xl font-black text-red-400 mb-2">${data.invalid || 0}</div>
@@ -330,19 +370,18 @@
                         </div>
                         <div class="text-center p-8 glass rounded-2xl">
                             <div class="text-4xl font-black text-orange-400 mb-2">${data.total_shipments || 0}</div>
-                            <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Total Shipments</div>
+                            <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Shipments</div>
                         </div>
                         <div class="text-center p-8 glass rounded-2xl">
-                            <div class="text-4xl font-black text-blue-400 mb-2">${data.threads || data.num_browsers || 0}</div>
+                            <div class="text-4xl font-black text-blue-400 mb-2">${data.threads || 0}</div>
                             <div class="text-sm font-medium opacity-75 uppercase tracking-wider">Workers</div>
                         </div>
                     </div>
                     
-                    <!-- Status Details -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/10">
                         <div class="p-6 glass rounded-2xl text-center">
                             <div class="text-lg font-bold">${data.current_file || 'No file'}</div>
-                            <div class="text-sm opacity-75">${data.total_logins || 0} total creds</div>
+                            <div class="text-sm opacity-75">${data.total_logins || 0} creds</div>
                         </div>
                         <div class="p-6 glass rounded-2xl text-center">
                             <div class="text-lg font-bold">${data.elapsed || '00:00'}</div>
@@ -358,22 +397,18 @@
         }
 
         function renderSuccessTable(accounts) {
-            if (!accounts || !accounts.length) {
-                return `
-                    <div class="text-center py-20 opacity-50">
-                        <i class="fas fa-circle-check text-6xl block mb-4"></i>
-                        <div class="text-lg">No live accounts yet</div>
-                        <div class="text-sm mt-2">Upload credentials and launch workers</div>
-                    </div>
-                `;
+            if (!accounts?.length) {
+                return `<div class="text-center py-20 opacity-50">
+                    <i class="fas fa-circle-check text-6xl block mb-4"></i>
+                    <div class="text-lg">No live accounts yet</div>
+                </div>`;
             }
-            
             return accounts.map(account => `
                 <div class="success-row p-4 rounded-2xl hover:bg-white/10 transition-all group border border-white/10">
                     <div class="flex flex-col space-y-1 flex-1 min-w-0">
                         <div class="font-bold text-sm truncate group-hover:underline">${account.user_id}</div>
                         <div class="text-xs opacity-75 truncate">${account.password?.slice(0,20)}${account.password?.length > 20 ? '...' : ''}</div>
-                        ${account.name ? `<div class="text-xs opacity-60 capitalize">${account.name}</div>` : ''}
+                        ${account.name ? `<div class="text-xs opacity-60">${account.name}</div>` : ''}
                         ${account.phone ? `<div class="text-xs opacity-50">${account.phone}</div>` : ''}
                     </div>
                     <div class="text-right ml-4">
@@ -388,23 +423,20 @@
         }
 
         function renderInvalidTable(accounts) {
-            if (!accounts || !accounts.length) {
-                return `
-                    <div class="text-center py-20 opacity-50">
-                        <i class="fas fa-times-circle text-6xl block mb-4"></i>
-                        <div class="text-lg">No invalid accounts</div>
-                    </div>
-                `;
+            if (!accounts?.length) {
+                return `<div class="text-center py-20 opacity-50">
+                    <i class="fas fa-times-circle text-6xl block mb-4"></i>
+                    <div class="text-lg">No invalid accounts</div>
+                </div>`;
             }
-            
             return accounts.slice(0, 8).map(account => `
                 <div class="invalid-row p-4 rounded-xl hover:bg-white/10 transition-all border border-white/10">
                     <div class="flex flex-col space-y-1 flex-1 min-w-0">
                         <div class="font-bold text-sm truncate">${account.user_id}</div>
-                        <div class="text-xs opacity-75 truncate">${account.password || '****'}</div>
+                        <div class="text-xs opacity-75 truncate">${account.password?.slice(0,8) || '****'}...</div>
                     </div>
                     <div class="text-right text-xs opacity-75 font-mono bg-red-500/20 px-2 py-1 rounded text-red-300">
-                        ${account.error ? account.error.slice(0, 40) + '...' : account.login_status || 'Failed'}
+                        ${account.error ? account.error.slice(0, 30) + '...' : account.login_status || 'Failed'}
                     </div>
                 </div>
             `).join('');
@@ -412,25 +444,33 @@
 
         function renderUploadResult(data) {
             if (data.status === 'success') {
-                return `
-                    <div class="flex items-center gap-3 p-6 bg-emerald-500/20 rounded-2xl border-2 border-emerald-400/40 animate-pulse">
-                        <i class="fas fa-check-circle text-2xl text-emerald-400"></i>
-                        <div>
-                            <div class="font-bold text-lg">${data.filename}</div>
-                            <div class="text-sm opacity-90">${data.total_creds || 0} valid credentials</div>
-                            <div class="text-xs opacity-75 mt-1">Ready to launch workers!</div>
-                        </div>
+                return `<div class="flex items-center gap-3 p-6 bg-emerald-500/20 rounded-2xl border-2 border-emerald-400/40 animate-pulse">
+                    <i class="fas fa-check-circle text-2xl text-emerald-400"></i>
+                    <div>
+                        <div class="font-bold text-lg">${data.filename}</div>
+                        <div class="text-sm opacity-90">${data.total_creds || 0} valid credentials</div>
+                        <div class="text-xs opacity-75 mt-1">Ready! Launch workers below 👇</div>
                     </div>
-                `;
-            } else if (data.status === 'error') {
-                return `
-                    <div class="flex items-center gap-3 p-6 bg-red-500/20 rounded-2xl border-2 border-red-400/40">
-                        <i class="fas fa-exclamation-triangle text-2xl text-red-400"></i>
-                        <div class="font-bold">${data.message || 'Upload failed'}</div>
-                    </div>
-                `;
-            }
-            return `<div class="text-red-400 text-sm">Unknown response</div>`;
+                </div>`;
+            } 
+            return `<div class="flex items-center gap-3 p-6 bg-red-500/20 rounded-2xl border-2 border-red-400/40">
+                <i class="fas fa-exclamation-triangle text-2xl text-red-400"></i>
+                <div class="font-bold text-red-300">${data.message || 'Upload failed'}</div>
+            </div>`;
+        }
+
+        function renderControlResult(data) {
+            if (data.status === 'success') {
+                return `<div class="flex items-center gap-3 p-6 bg-emerald-500/30 rounded-2xl border-2 border-emerald-400/50 animate-pulse">
+                    <i class="fas fa-check-circle text-xl text-emerald-400"></i>
+                    <div class="font-bold">${data.message}</div>
+                    <div class="text-xs opacity-90 mt-1">${data.file} - Monitoring live...</div>
+                </div>`;
+            } 
+            return `<div class="flex items-center gap-3 p-6 bg-red-500/30 rounded-2xl border-2 border-red-400/50">
+                <i class="fas fa-exclamation-triangle text-xl text-red-400"></i>
+                <div class="font-bold text-red-300">${data.message || 'Error'}</div>
+            </div>`;
         }
 
         function updateControls(status) {
@@ -440,29 +480,43 @@
             if (status?.is_running) {
                 if (launchBtn) {
                     launchBtn.disabled = true;
-                    launchBtn.classList.add('opacity-40', 'cursor-not-allowed');
-                    launchBtn.classList.remove('hover:from-emerald-600', 'hover:to-teal-700');
+                    launchBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 }
                 if (stopBtn) {
-                    stopBtn.disabled = false;
                     stopBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
             } else {
                 if (launchBtn) {
                     launchBtn.disabled = false;
-                    launchBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+                    launchBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
                 if (stopBtn) {
-                    stopBtn.disabled = true;
                     stopBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 }
             }
         }
 
-        // 🎵 Success sound + notifications
+        function updateStatusIndicator(status) {
+            const indicator = document.getElementById('status-indicator');
+            if (status?.is_running) {
+                indicator.textContent = 'RUNNING';
+                indicator.className = 'ml-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/90 text-emerald-900';
+            } else {
+                indicator.textContent = 'IDLE';
+                indicator.className = 'ml-2 px-3 py-1 rounded-full text-xs font-bold bg-gray-700';
+            }
+        }
+
+        // 🎵 Success notifications
+        let successCount = 0;
         document.body.addEventListener('htmx:afterSwap', function(e) {
-            if (e.target.id === 'success-results' && document.querySelector('.success-row')) {
-                playSuccessSound();
+            if (e.target.id === 'success-results') {
+                const newSuccesses = e.target.querySelectorAll('.success-row').length;
+                if (newSuccesses > successCount) {
+                    successCount = newSuccesses;
+                    showToast(`🎉 Found ${newSuccesses} live accounts!`, 'success');
+                    playSuccessSound();
+                }
             }
         });
 
@@ -476,7 +530,7 @@
                 oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
                 gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-                oscillator.start(audioCtx.currentTime);
+                oscillator.start();
                 oscillator.stop(audioCtx.currentTime + 0.3);
             } catch(e) {}
         }
@@ -498,32 +552,19 @@
             }, 4000);
         }
 
-        // Auto-refresh controls after actions
-        document.body.addEventListener('htmx:afterRequest', function(e) {
-            if (e.target.closest('#control-panel') && e.detail.successful) {
-                setTimeout(() => {
-                    document.getElementById('refresh-status').click();
-                }, 1000);
-            }
-            
-            if (e.target.matches('#upload-form button')) {
-                if (e.detail.successful) {
-                    showToast('✅ File uploaded successfully!', 'success');
-                } else {
-                    showToast('❌ Upload failed', 'error');
-                }
-            }
-            
-            if (e.target.classList.contains('launch-btn') && e.detail.successful) {
-                showToast('🚀 Workers launched! Live monitoring active...', 'success');
-            }
-        });
-
-        // Page load initialization
+        // Auto-start refresh
         window.addEventListener('load', function() {
             setTimeout(() => {
                 document.getElementById('refresh-status').click();
             }, 500);
+        });
+
+        // Export button fix
+        document.getElementById('export-success').addEventListener('click', function(e) {
+            if (parseInt(document.getElementById('success-count').textContent) === 0) {
+                e.preventDefault();
+                showToast('No live accounts to export', 'error');
+            }
         });
     </script>
 </body>
